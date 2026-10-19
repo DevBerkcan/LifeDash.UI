@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { DashboardResponse } from "../api/types";
+import type { Appointment, DashboardResponse } from "../api/types";
 import AlertRow from "../components/AlertRow";
+import { useDialog } from "../components/Dialog";
 import { AlertCompositionChart, UpcomingLoadChart } from "../components/DashboardCharts";
 import DashboardDeliveries from "../components/DashboardDeliveries";
 import DashboardWeather from "../components/DashboardWeather";
 import Horizon from "../components/Horizon";
 import { Empty, ErrorBar, PageHead, Pager, Stat, usePaged } from "../components/Ui";
 import { euro } from "../lib/format";
+import { atOccurrence, dayAfter, nextOccurrence, normalizeRecurrence } from "../lib/recurrence";
 import { useAsync } from "../lib/useAsync";
 
 const filters = [
@@ -25,8 +27,43 @@ const HORIZON_DAYS = 120;
 
 export default function Dashboard({ onCount }: { onCount?: (n: number) => void }) {
   const [filter, setFilter] = useState("all");
-  const { data, error, loading } = useAsync<DashboardResponse>(
+  const [actionError, setActionError] = useState<string | null>(null);
+  const dialog = useDialog();
+  const { data, error, loading, reload } = useAsync<DashboardResponse>(
     () => api.get<DashboardResponse>(`/api/dashboard?horizonDays=${HORIZON_DAYS}`), []);
+  const appointments = useAsync<Appointment[]>(() => api.get("/api/appointments"), []);
+
+  async function completeAppointment(alert: DashboardResponse["alerts"][number]) {
+    const appointment = appointments.data?.find((a) => a.id === alert.relatedId);
+    if (!appointment) return;
+    setActionError(null);
+    try {
+      if (normalizeRecurrence(appointment.recurrence)) {
+        const following = nextOccurrence(appointment, dayAfter(alert.dueOn ?? appointment.startsAt));
+        await api.put(`/api/appointments/${appointment.id}`, following
+          ? atOccurrence(appointment, following)
+          : { ...appointment, isDone: true });
+      } else {
+        await api.put(`/api/appointments/${appointment.id}`, { ...appointment, isDone: true });
+      }
+      await Promise.all([reload(), appointments.reload()]);
+    } catch (e) { setActionError((e as Error).message); }
+  }
+
+  async function deleteAppointment(alert: DashboardResponse["alerts"][number]) {
+    const appointment = appointments.data?.find((a) => a.id === alert.relatedId);
+    if (!appointment) return;
+    const isSeries = !!normalizeRecurrence(appointment.recurrence);
+    const ok = await dialog.confirm(isSeries
+      ? { title: "Terminserie löschen", message: "Die ganze Terminserie mit allen Wiederholungen löschen?", confirmText: "Löschen", danger: true }
+      : { title: "Termin löschen", message: "Termin wirklich löschen?", confirmText: "Löschen", danger: true });
+    if (!ok) return;
+    setActionError(null);
+    try {
+      await api.del(`/api/appointments/${appointment.id}`);
+      await Promise.all([reload(), appointments.reload()]);
+    } catch (e) { setActionError((e as Error).message); }
+  }
 
   const urgentCount = data
     ? data.summary.overdue + data.summary.urgent
@@ -55,6 +92,8 @@ export default function Dashboard({ onCount }: { onCount?: (n: number) => void }
         title="Was als Nächstes ansteht"
         lede="Alle Fristen aus Familie, Behörden, Finanzen und Reisen an einem Ort — nach Dringlichkeit sortiert."
       />
+
+      <ErrorBar message={actionError} />
 
       <Horizon alerts={data.alerts} horizon={30} />
 
@@ -109,7 +148,9 @@ export default function Dashboard({ onCount }: { onCount?: (n: number) => void }
         ? <Empty title="Hier ist gerade nichts fällig."
                  hint="Sobald ein Dokument abläuft oder eine Frist näher rückt, taucht es hier auf." />
         : <>
-            <div className="alert-list">{shownPaged.pageItems.map((a) => <AlertRow key={a.id} alert={a} />)}</div>
+            <div className="alert-list">{shownPaged.pageItems.map((a) => <AlertRow key={a.id} alert={a}
+              appointment={appointments.data?.find((item) => item.id === a.relatedId)}
+              onComplete={completeAppointment} onDelete={deleteAppointment} />)}</div>
             <Pager paged={shownPaged} />
           </>}
     </>
