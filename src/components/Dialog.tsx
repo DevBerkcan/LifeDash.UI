@@ -120,7 +120,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       {children}
       {state && (
         <div
-          className="dlg-backdrop"
+          className="dlg-backdrop dlg-backdrop-top"
           role="presentation"
           onMouseDown={(e) => setCloseOnBackdropClick(e.target === e.currentTarget)}
           onClick={(e) => {

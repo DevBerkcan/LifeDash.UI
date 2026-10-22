@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Alert, Appointment, FamilyMember, ImportantDate, Trip } from "../api/types";
@@ -244,7 +245,8 @@ export default function AlertDetailsDialog({ alert, onClose, onChanged }: {
 
   const shown = rows.filter(([, v]) => v != null && String(v).trim() !== "");
 
-  return (
+  // Rendered into <body> so no parent section (transforms, overflow) can clip or cover it.
+  return createPortal(
     <div className="dlg-backdrop" role="presentation"
       onMouseDown={(e) => setBackdropDown(e.target === e.currentTarget)}
       onClick={(e) => { if (e.target === e.currentTarget && backdropDown) onClose(); setBackdropDown(false); }}>
@@ -303,6 +305,7 @@ export default function AlertDetailsDialog({ alert, onClose, onChanged }: {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

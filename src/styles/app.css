@@ -70,7 +70,9 @@ a { color: inherit; }
   border-radius: 4px;
 }
 
-.shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100%; }
+/* minmax(0, 1fr): the content column must never grow wider than the screen because of a wide child
+   (the dashboard calendar did that on phones, so the WebView had to be zoomed out). */
+.shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100%; }
 
 .mobile-nav-launch {
   display: none;
@@ -266,8 +268,9 @@ a { color: inherit; }
   color: #e8edf2;
 }
 
-.main { padding: 28px 34px 64px; max-width: 1180px; }
-.main > * { animation: rise 0.36s ease both; }
+.main { padding: 28px 34px 64px; max-width: 1180px; min-width: 0; }
+/* "backwards", not "both": a leftover transform would trap fixed dialogs inside the section. */
+.main > * { animation: rise 0.36s ease backwards; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
@@ -1518,6 +1521,9 @@ textarea { min-height: 70px; resize: vertical; }
   padding: 14px;
 }
 
+/* Confirm/form dialogs must sit above detail dialogs that open them (e.g. "Termin löschen?"). */
+.dlg-backdrop.dlg-backdrop-top { z-index: 90; }
+
 .dlg {
   width: min(720px, 100%);
   max-height: 92vh;
@@ -1717,7 +1723,7 @@ textarea { min-height: 70px; resize: vertical; }
 }
 
 @media (max-width: 860px) {
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
   .mobile-nav-launch {
     position: fixed;
     left: 12px;
@@ -3154,6 +3160,7 @@ textarea { min-height: 70px; resize: vertical; }
 
 /* Dashboard calendar: appointment actions inside the details dialog */
 .alert-details-actions { flex-wrap: wrap; }
+.alert-details-actions a.btn { text-decoration: none; }
 .alert-details-error { margin: 10px 0 0; color: var(--neg, #c0392b); font-size: 13px; }
 @media (max-width: 640px) {
   .alert-details-actions .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
