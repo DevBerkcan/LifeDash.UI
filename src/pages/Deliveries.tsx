@@ -154,6 +154,9 @@ export default function Deliveries() {
 
   const [carrierFilter, setCarrierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [senderFilter, setSenderFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"updated" | "expected" | "title">("updated");
   const [quickTrackingInput, setQuickTrackingInput] = useState("");
   const [quickTitleInput, setQuickTitleInput] = useState("");
 
@@ -274,16 +277,79 @@ export default function Deliveries() {
   const todayCount = packages.filter((p) => p.status === "out_for_delivery").length;
   const deliveredCount = packages.filter((p) => p.status === "delivered").length;
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of packages) counts[p.status] = (counts[p.status] ?? 0) + 1;
+    return counts;
+  }, [packages]);
+
+  const carrierCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of packages) counts[p.carrier] = (counts[p.carrier] ?? 0) + 1;
+    return counts;
+  }, [packages]);
+
+  const senders = useMemo(
+    () =>
+      Array.from(new Set(packages.map((p) => p.sender?.trim()).filter((s): s is string => !!s))).sort((a, b) =>
+        a.localeCompare(b, "de")
+      ),
+    [packages]
+  );
+
+  const filtersActive =
+    statusFilter !== "active" || carrierFilter !== "all" || senderFilter !== "all" || searchQuery.trim() !== "";
+
+  function resetFilters() {
+    setStatusFilter("active");
+    setCarrierFilter("all");
+    setSenderFilter("all");
+    setSearchQuery("");
+  }
+
   const filtered = useMemo(() => {
-    return packages.filter((p) => {
+    const terms = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const result = packages.filter((p) => {
       if (carrierFilter !== "all" && p.carrier !== carrierFilter) return false;
       if (statusFilter === "active" && p.status === "delivered") return false;
-      if (statusFilter === "delivered" && p.status !== "delivered") return false;
+      if (statusFilter !== "active" && statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (senderFilter !== "all" && (p.sender?.trim() ?? "") !== senderFilter) return false;
+      if (terms.length > 0) {
+        const haystack = [
+          p.title,
+          p.trackingNumber,
+          p.sender,
+          p.latestEvent,
+          CARRIER_INFO[p.carrier]?.name,
+          STATUS_LABELS[p.status]?.label,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!terms.every((t) => haystack.includes(t))) return false;
+      }
       return true;
     });
-  }, [packages, carrierFilter, statusFilter]);
+
+    return result.sort((a, b) => {
+      if (sortOrder === "title") return a.title.localeCompare(b.title, "de");
+      if (sortOrder === "expected") {
+        // Packages without a date go last.
+        const ad = a.expectedDelivery ?? "9999-12-31";
+        const bd = b.expectedDelivery ?? "9999-12-31";
+        return ad.localeCompare(bd);
+      }
+      return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
+    });
+  }, [packages, carrierFilter, statusFilter, senderFilter, searchQuery, sortOrder]);
 
   const packagesPaged = usePaged(filtered);
+  const { setPage: setPackagesPage } = packagesPaged;
+
+  // Jump back to page 1 whenever the filter set changes, otherwise the list can look empty.
+  useEffect(() => {
+    setPackagesPage(1);
+  }, [carrierFilter, statusFilter, senderFilter, searchQuery, sortOrder, setPackagesPage]);
 
   async function handleQuickAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -643,6 +709,63 @@ export default function Deliveries() {
 
       {/* Filters */}
       <div className="delivery-filters-row">
+        <div className="delivery-search-row">
+          <div className="mail-search delivery-search">
+            <i className="fa-solid fa-magnifying-glass" aria-hidden />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Sendungen durchsuchen (Bezeichnung, Sendungsnr., Händler…)"
+              aria-label="Sendungen durchsuchen"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="btn ghost small icon-only"
+                onClick={() => setSearchQuery("")}
+                aria-label="Suche leeren"
+                title="Suche leeren"
+              >
+                <i className="fa-solid fa-xmark" aria-hidden />
+              </button>
+            )}
+          </div>
+
+          {senders.length > 0 && (
+            <select
+              className="delivery-filter-select"
+              value={senderFilter}
+              onChange={(e) => setSenderFilter(e.target.value)}
+              aria-label="Nach Händler filtern"
+            >
+              <option value="all">Alle Händler</option>
+              {senders.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            className="delivery-filter-select"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+            aria-label="Sortierung"
+          >
+            <option value="updated">Zuletzt aktualisiert</option>
+            <option value="expected">Zustelldatum</option>
+            <option value="title">Bezeichnung A–Z</option>
+          </select>
+
+          {filtersActive && (
+            <button type="button" className="btn ghost small" onClick={resetFilters}>
+              <i className="fa-solid fa-filter-circle-xmark" aria-hidden /> Filter zurücksetzen
+            </button>
+          )}
+        </div>
+
         <div className="filters" role="group" aria-label="Nach Status filtern">
           <button
             className={`chip ${statusFilter === "active" ? "on" : ""}`}
@@ -651,17 +774,28 @@ export default function Deliveries() {
             Aktive ({activeCount})
           </button>
           <button
-            className={`chip ${statusFilter === "delivered" ? "on" : ""}`}
-            onClick={() => setStatusFilter("delivered")}
-          >
-            Zugestellt ({deliveredCount})
-          </button>
-          <button
             className={`chip ${statusFilter === "all" ? "on" : ""}`}
             onClick={() => setStatusFilter("all")}
           >
             Alle ({packages.length})
           </button>
+          {(
+            [
+              ["announced", "Angekündigt"],
+              ["in_transit", "Unterwegs"],
+              ["out_for_delivery", "In Zustellung"],
+              ["delivered", "Zugestellt"],
+              ["exception", "Verzögerung"],
+            ] as Array<[PackageStatus, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              className={`chip ${statusFilter === key ? "on" : ""}`}
+              onClick={() => setStatusFilter(key)}
+            >
+              {label} ({statusCounts[key] ?? 0})
+            </button>
+          ))}
         </div>
 
         <div className="filters" role="group" aria-label="Nach Paketdienst filtern">
@@ -671,37 +805,33 @@ export default function Deliveries() {
           >
             Alle Dienste
           </button>
-          <button
-            className={`chip ${carrierFilter === "dhl" ? "on" : ""}`}
-            onClick={() => setCarrierFilter("dhl")}
-          >
-            DHL
-          </button>
-          <button
-            className={`chip ${carrierFilter === "dpd" ? "on" : ""}`}
-            onClick={() => setCarrierFilter("dpd")}
-          >
-            DPD
-          </button>
-          <button
-            className={`chip ${carrierFilter === "hermes" ? "on" : ""}`}
-            onClick={() => setCarrierFilter("hermes")}
-          >
-            Hermes
-          </button>
-          <button
-            className={`chip ${carrierFilter === "gls" ? "on" : ""}`}
-            onClick={() => setCarrierFilter("gls")}
-          >
-            GLS
-          </button>
-          <button
-            className={`chip ${carrierFilter === "deutschepost" ? "on" : ""}`}
-            onClick={() => setCarrierFilter("deutschepost")}
-          >
-            Deutsche Post
-          </button>
+          {(
+            [
+              ["dhl", "DHL"],
+              ["dpd", "DPD"],
+              ["hermes", "Hermes"],
+              ["gls", "GLS"],
+              ["deutschepost", "Deutsche Post"],
+              ["other", "Andere"],
+            ] as Array<[CarrierType, string]>
+          )
+            .filter(([key]) => key !== "other" || (carrierCounts.other ?? 0) > 0)
+            .map(([key, label]) => (
+              <button
+                key={key}
+                className={`chip ${carrierFilter === key ? "on" : ""}`}
+                onClick={() => setCarrierFilter(key)}
+              >
+                {label} ({carrierCounts[key] ?? 0})
+              </button>
+            ))}
         </div>
+
+        {filtersActive && (
+          <p className="delivery-filter-summary">
+            {filtered.length} von {packages.length} Sendungen
+          </p>
+        )}
       </div>
 
       {/* Package List */}
@@ -709,10 +839,17 @@ export default function Deliveries() {
         {loading ? (
           <Empty title="Sendungen werden geladen…" hint="Einen Moment bitte." />
         ) : filtered.length === 0 ? (
-          <Empty
-            title="Keine Sendungen vorhanden."
-            hint="Füge oben eine Sendungsnummer ein, um deine Pakete live zu verfolgen."
-          />
+          packages.length > 0 ? (
+            <Empty
+              title="Keine Sendungen für diese Filter."
+              hint="Passe die Suche oder die Filter an, oder setze sie zurück."
+            />
+          ) : (
+            <Empty
+              title="Keine Sendungen vorhanden."
+              hint="Füge oben eine Sendungsnummer ein, um deine Pakete live zu verfolgen."
+            />
+          )
         ) : (
           <div className="delivery-grid">
             {packagesPaged.pageItems.map((pkg) => {
