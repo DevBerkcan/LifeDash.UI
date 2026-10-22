@@ -6,7 +6,11 @@ import { APPOINTMENT_CATEGORIES, IMPORTANT_DATE_CATEGORIES } from "../lib/catego
 import type { Option } from "../lib/categories";
 import { countdown, dateTime, severityLabel, shortDate } from "../lib/format";
 import { directionsUrl } from "../lib/maps";
-import { recurrenceLabel } from "../lib/recurrence";
+import { atOccurrence, dayAfter, nextOccurrence, normalizeRecurrence, recurrenceLabel } from "../lib/recurrence";
+import {
+  RECURRENCE_FIELDS, fromDateTimeInput, normalizeCategory, recurrencePayload, toLocalDateTimeInput,
+} from "../lib/appointmentForm";
+import { useDialog } from "./Dialog";
 import { useCustomOptions } from "../lib/useCustomOptions";
 
 const moduleLabel: Record<string, string> = {
@@ -38,11 +42,19 @@ type Details =
   | null;
 
 /**
- * Read-only details for one dashboard entry (calendar or overdue strip). Shows the full record
- * where one exists, plus a button to jump to the section that owns it.
+ * Details for one dashboard entry (calendar or overdue strip). Appointments can be completed,
+ * edited or deleted right here; other entries link to the section that owns them.
  */
-export default function AlertDetailsDialog({ alert, onClose }: { alert: Alert | null; onClose: () => void }) {
+export default function AlertDetailsDialog({ alert, onClose, onChanged }: {
+  alert: Alert | null;
+  onClose: () => void;
+  // Called after an appointment was completed, edited or deleted so the dashboard can reload.
+  onChanged?: () => void | Promise<void>;
+}) {
   const navigate = useNavigate();
+  const dialog = useDialog();
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [details, setDetails] = useState<Details>(null);
   const [loading, setLoading] = useState(false);
   const [backdropDown, setBackdropDown] = useState(false);
@@ -51,6 +63,7 @@ export default function AlertDetailsDialog({ alert, onClose }: { alert: Alert | 
 
   useEffect(() => {
     setDetails(null);
+    setActionError(null);
     if (!alert || alert.relatedId == null) return;
     const id = alert.relatedId;
     let cancelled = false;
@@ -93,6 +106,96 @@ export default function AlertDetailsDialog({ alert, onClose }: { alert: Alert | 
   }, [alert, onClose]);
 
   if (!alert) return null;
+
+  const appt = details?.kind === "appointment" ? details.appt : null;
+  const apptIsSeries = !!normalizeRecurrence(appt?.recurrence);
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await action();
+      await onChanged?.();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Completing one occurrence of a series moves the series to its next date (same as Termine).
+  function completeAppointment() {
+    if (!appt || !alert) return;
+    const occurrence = alert.dueOn ?? appt.startsAt;
+    void run(async () => {
+      if (apptIsSeries) {
+        const following = nextOccurrence(appt, dayAfter(occurrence));
+        await api.put(`/api/appointments/${appt.id}`, following ? atOccurrence(appt, following) : { ...appt, isDone: true });
+      } else {
+        await api.put(`/api/appointments/${appt.id}`, { ...appt, isDone: true });
+      }
+      onClose();
+    });
+  }
+
+  async function editAppointment() {
+    if (!appt || !details || details.kind !== "appointment") return;
+    const categoryOptions = [...APPOINTMENT_CATEGORIES, ...customApptCats.options];
+    const memberOptions = details.members.map((m) => ({ value: String(m.id), label: m.fullName }));
+    onClose();
+    const values = await dialog.form({
+      title: apptIsSeries ? "Terminserie bearbeiten" : "Termin bearbeiten",
+      submitText: "Speichern",
+      fields: [
+        { key: "title", label: "Termin" },
+        { key: "startsAt", label: apptIsSeries ? "Start (erster Termin der Serie)" : "Start", type: "datetime-local" },
+        { key: "location", label: "Ort" },
+        {
+          key: "category", label: "Kategorie", type: "select", options: categoryOptions,
+          allowCustomOption: { onAdd: (label) => customApptCats.add(label, categoryOptions) },
+        },
+        { key: "attendeeIds", label: "Personen", type: "multiselect", options: memberOptions },
+        ...RECURRENCE_FIELDS,
+      ],
+      initial: {
+        title: appt.title,
+        startsAt: toLocalDateTimeInput(appt.startsAt),
+        location: appt.location ?? "",
+        category: normalizeCategory(appt.category, categoryOptions),
+        attendeeIds: appt.attendeeIds.join(","),
+        recurrence: normalizeRecurrence(appt.recurrence) ?? "",
+        recurrenceUntil: appt.recurrenceUntil ?? "",
+      },
+    });
+    if (!values) return;
+    try {
+      await api.put(`/api/appointments/${appt.id}`, {
+        ...appt,
+        title: String(values.title).trim() || appt.title,
+        startsAt: fromDateTimeInput(values.startsAt) ?? appt.startsAt,
+        location: String(values.location ?? "").trim() || null,
+        category: normalizeCategory(String(values.category), categoryOptions),
+        attendeeIds: String(values.attendeeIds ?? "").split(",").map((v) => Number(v.trim())).filter((n) => Number.isFinite(n) && n > 0),
+        isDone: false,
+        ...recurrencePayload(values),
+      });
+      await onChanged?.();
+    } catch (e) {
+      await dialog.confirm({ title: "Speichern fehlgeschlagen", message: (e as Error).message, confirmText: "OK" });
+    }
+  }
+
+  async function deleteAppointment() {
+    if (!appt) return;
+    const ok = await dialog.confirm(apptIsSeries
+      ? { title: "Terminserie löschen", message: "Die ganze Terminserie mit allen Wiederholungen löschen?", confirmText: "Löschen", danger: true }
+      : { title: "Termin löschen", message: "Termin wirklich löschen?", confirmText: "Löschen", danger: true });
+    if (!ok) return;
+    void run(async () => {
+      await api.del(`/api/appointments/${appt.id}`);
+      onClose();
+    });
+  }
 
   const rows: Row[] = [
     ["Bereich", moduleLabel[alert.module] ?? alert.module],
@@ -168,14 +271,32 @@ export default function AlertDetailsDialog({ alert, onClose }: { alert: Alert | 
           </div>
         )}
 
-        <div className="dlg-actions">
+        {actionError && <p className="alert-details-error" role="alert">{actionError}</p>}
+
+        <div className="dlg-actions alert-details-actions">
+          {appt && (
+            <>
+              <button type="button" className="btn danger" onClick={() => void deleteAppointment()} disabled={busy}
+                title={apptIsSeries ? "Terminserie löschen" : "Termin löschen"}>
+                <i className="fa-solid fa-trash" aria-hidden /> Löschen
+              </button>
+              <button type="button" className="btn ghost" onClick={() => void editAppointment()} disabled={busy}
+                title={apptIsSeries ? "Terminserie bearbeiten" : "Termin bearbeiten"}>
+                <i className="fa-solid fa-pen-to-square" aria-hidden /> Bearbeiten
+              </button>
+              <button type="button" className="btn" onClick={completeAppointment} disabled={busy}
+                title="Termin als erledigt markieren">
+                <i className="fa-solid fa-check" aria-hidden /> Erledigt
+              </button>
+            </>
+          )}
           <button type="button" className="btn ghost" onClick={onClose}>Schließen</button>
           {destination && (
             <a className="btn" href={directionsUrl(destination)} target="_blank" rel="noreferrer">
               <i className="fa-solid fa-diamond-turn-right" aria-hidden /> Route starten
             </a>
           )}
-          {alert.actionPath && (
+          {alert.actionPath && alert.relatedType !== "Appointment" && (
             <button type="button" className="btn" onClick={() => { onClose(); navigate(alert.actionPath!); }}>
               {alert.actionLabel ?? "Öffnen"}
             </button>

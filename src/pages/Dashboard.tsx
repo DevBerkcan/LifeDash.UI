@@ -79,7 +79,7 @@ export default function Dashboard({ onCount }: { onCount?: (n: number) => void }
   }, [data, filter]);
   const shownPaged = usePaged(shown);
 
-  if (loading) return <p className="lede">Wird geladen …</p>;
+  if (loading && !data) return <p className="lede">Wird geladen …</p>;
   if (error) return <ErrorBar message={error} />;
   if (!data) return null;
 
@@ -95,7 +95,8 @@ export default function Dashboard({ onCount }: { onCount?: (n: number) => void }
 
       <ErrorBar message={actionError} />
 
-      <Horizon alerts={data.alerts} horizon={30} />
+      <Horizon alerts={data.alerts} horizon={30}
+        onChanged={async () => { await Promise.all([reload(), appointments.reload()]); }} />
 
       <DashboardDeliveries />
 

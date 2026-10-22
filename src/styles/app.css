@@ -3151,3 +3151,10 @@ textarea { min-height: 70px; resize: vertical; }
 @media (max-width: 420px) {
   .route-summary .route-go { grid-column: 1 / -1; grid-row: auto; margin-top: 8px; justify-content: center; }
 }
+
+/* Dashboard calendar: appointment actions inside the details dialog */
+.alert-details-actions { flex-wrap: wrap; }
+.alert-details-error { margin: 10px 0 0; color: var(--neg, #c0392b); font-size: 13px; }
+@media (max-width: 640px) {
+  .alert-details-actions .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
+}

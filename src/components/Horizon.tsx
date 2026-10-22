@@ -29,8 +29,8 @@ function dueIso(a: Alert): string | null {
   return a.daysLeft === null ? null : localDateIso(addDays(new Date(), a.daysLeft));
 }
 
-export default function Horizon({ alerts, horizon = 30 }:
-  { alerts: Alert[]; horizon?: number }) {
+export default function Horizon({ alerts, horizon = 30, onChanged }:
+  { alerts: Alert[]; horizon?: number; onChanged?: () => void | Promise<void> }) {
   const [selected, setSelected] = useState<Alert | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -133,7 +133,7 @@ export default function Horizon({ alerts, horizon = 30 }:
         })}
       </div>
 
-      <AlertDetailsDialog alert={selected} onClose={() => setSelected(null)} />
+      <AlertDetailsDialog alert={selected} onClose={() => setSelected(null)} onChanged={onChanged} />
     </div>
   );
 }
