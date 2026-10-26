@@ -66,7 +66,7 @@ export default function Login() {
     <div className="auth">
       <div className="auth-card">
         <p className="eyebrow">Persönliches Ablagesystem</p>
-        <h1 style={{ marginBottom: 18 }}>Life Dashboard</h1>
+        <h1 style={{ marginBottom: 18 }}>GentleLife</h1>
 
         <div className="card">
           <div className="row" style={{ justifyContent: "flex-end" }}>
@@ -83,7 +83,7 @@ export default function Login() {
 
           <ErrorBar message={error} />
 
-          <p className="auth-hint">Google-Konto verbinden, um Life Dashboard zu nutzen.</p>
+          <p className="auth-hint">Google-Konto verbinden, um GentleLife zu nutzen.</p>
 
           {googleClientId && (
             <>

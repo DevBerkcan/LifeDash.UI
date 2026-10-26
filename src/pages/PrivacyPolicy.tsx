@@ -21,7 +21,7 @@ export default function PrivacyPolicy() {
         <section>
           <h2>2. Welche Daten verarbeitet werden</h2>
           <p>
-            In Life Dashboard werden nur die Daten verarbeitet, die du selbst einträgst (z. B. Termine,
+            In GentleLife werden nur die Daten verarbeitet, die du selbst einträgst (z. B. Termine,
             Dokument-Metadaten, Finanzpositionen, Aufgaben und Familiendaten).
           </p>
         </section>

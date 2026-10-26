@@ -14,19 +14,19 @@ const CATEGORICAL_DARK = [
 // needs literal hex, since SVG presentation attributes don't resolve var().
 const LIGHT = {
   categorical: CATEGORICAL_LIGHT,
-  accent: "#b54f2f",
+  accent: "#2f8a43",
   danger: "#ac2b41",
   warning: "#9b6d1a",
   ok: "#1f7a5a",
-  text: "#2f1f17",
-  textSoft: "#766257",
-  line: "#e2d3c6",
+  text: "#1d2b20",
+  textSoft: "#5d7262",
+  line: "#d6e8cf",
   card: "#ffffff",
 };
 
 const DARK = {
   categorical: CATEGORICAL_DARK,
-  accent: "#6ea8ff",
+  accent: "#7fd68a",
   danger: "#ff7f91",
   warning: "#efbf72",
   ok: "#68d0a6",
