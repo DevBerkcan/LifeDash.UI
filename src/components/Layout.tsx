@@ -81,8 +81,8 @@ export default function Layout({ alertCount }: { alertCount: number }) {
             <i className="fa-solid fa-xmark" aria-hidden />
           </button>
           <div className="brand">
-            <span className="brand-mark" aria-hidden><i className="fa-solid fa-layer-group" /></span>
-            <span className="brand-name">Life Dashboard</span>
+            <span className="brand-mark" aria-hidden><i className="fa-solid fa-leaf" /></span>
+            <span className="brand-name">GentleLife</span>
           </div>
         </div>
 

@@ -13,7 +13,7 @@ export default function TermsOfService() {
         <section>
           <h2>1. Geltungsbereich</h2>
           <p>
-            Diese Nutzungsbedingungen gelten für die Nutzung von Life Dashboard durch registrierte Nutzerinnen
+            Diese Nutzungsbedingungen gelten für die Nutzung von GentleLife durch registrierte Nutzerinnen
             und Nutzer.
           </p>
         </section>
@@ -21,7 +21,7 @@ export default function TermsOfService() {
         <section>
           <h2>2. Leistungen</h2>
           <p>
-            Life Dashboard stellt Funktionen für Organisation, Fristenverwaltung und persönliche Planung bereit.
+            GentleLife stellt Funktionen für Organisation, Fristenverwaltung und persönliche Planung bereit.
           </p>
         </section>
 

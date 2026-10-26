@@ -56,11 +56,11 @@ const STORAGE_KEY_SELECTED = "ld_weather_selected_city_id";
 
 const DEFAULT_CITIES: CityConfig[] = [
   {
-    id: "duesseldorf-de",
-    name: "Düsseldorf",
+    id: "wuppertal-de",
+    name: "Wuppertal",
     country: "Deutschland",
-    latitude: 51.2277,
-    longitude: 6.7735,
+    latitude: 51.2562,
+    longitude: 7.1508,
     timezone: "Europe/Berlin",
   },
   {
