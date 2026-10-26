@@ -25,8 +25,18 @@ export default function Login() {
   const googleRef = useRef<HTMLDivElement>(null);
   const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
 
+  // The GSI script loads async, so it may not be there yet on first render.
+  const [googleReady, setGoogleReady] = useState(() => !!window.google);
   useEffect(() => {
-    if (!googleClientId || !window.google || !googleRef.current) return;
+    if (googleReady) return;
+    const timer = window.setInterval(() => {
+      if (window.google) { setGoogleReady(true); window.clearInterval(timer); }
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [googleReady]);
+
+  useEffect(() => {
+    if (!googleClientId || !googleReady || !window.google || !googleRef.current) return;
     window.google.accounts.id.initialize({
       client_id: googleClientId,
       callback: async (res) => {
@@ -50,7 +60,7 @@ export default function Login() {
       text: "signin_with",
       shape: "pill",
     });
-  }, [googleClientId, signInGoogle]);
+  }, [googleClientId, googleReady, signInGoogle]);
 
   return (
     <div className="auth">
