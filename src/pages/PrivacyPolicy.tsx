@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-const updatedAt = "27.08.2026";
+const updatedAt = "27.10.2026";
 
 export default function PrivacyPolicy() {
   return (
@@ -13,8 +13,8 @@ export default function PrivacyPolicy() {
         <section>
           <h2>1. Verantwortliche Stelle</h2>
           <p>
-            Diese App wird von dir als Betreiber bereitgestellt. Ergänze hier deinen Namen/Firmennamen,
-            Postadresse und Kontakt-E-Mail, damit die Seite öffentlich vollständig ist.
+            GentleLife ist ein privates Projekt von Berk-Can Atesoglu und wird nur für den persönlichen
+            Gebrauch betrieben. Kontakt: <a href="mailto:berkcan@gentlegroup.de">berkcan@gentlegroup.de</a>.
           </p>
         </section>
 
@@ -46,6 +46,7 @@ export default function PrivacyPolicy() {
           <h2>5. Speicherdauer</h2>
           <p>
             Daten bleiben gespeichert, bis du sie in der App löschst oder deren Löschung beim Betreiber anforderst.
+            Die App läuft bei Vercel (Oberfläche) und MonsterASP (Server und Datenbank, EU).
           </p>
         </section>
 
@@ -60,7 +61,7 @@ export default function PrivacyPolicy() {
         <section>
           <h2>7. Kontakt</h2>
           <p>
-            Ergänze hier eine erreichbare Kontaktadresse für Datenschutzanfragen.
+            Datenschutzanfragen bitte an <a href="mailto:berkcan@gentlegroup.de">berkcan@gentlegroup.de</a>.
           </p>
         </section>
 

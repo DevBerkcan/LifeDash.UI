@@ -66,4 +66,17 @@ export const api = {
     return request<T>(p, { method: "POST", body: fd });
   },
   fileUrl: (documentId: number) => `${BASE}/api/documents/${documentId}/file`,
+  // Fetches a file with the auth header and hands it to the browser as a download.
+  download: async (p: string, fallbackName: string) => {
+    const token = getToken();
+    const res = await fetch(`${BASE}${p}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new ApiError(res.status, `Download fehlgeschlagen (${res.status}).`);
+    const name = /filename=([^;]+)/.exec(res.headers.get("Content-Disposition") ?? "")?.[1]?.trim() ?? fallbackName;
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

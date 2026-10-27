@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import type { DashboardResponse } from "../api/types";
@@ -24,6 +24,18 @@ const links = [
 export default function Layout({ alertCount }: { alertCount: number }) {
   const { session, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [backingUp, setBackingUp] = useState(false);
+
+  async function downloadBackup() {
+    setBackingUp(true);
+    try {
+      await api.download("/api/export", "gentlelife-backup.zip");
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setBackingUp(false);
+    }
+  }
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navAlertCount, setNavAlertCount] = useState(alertCount);
   const location = useLocation();
@@ -125,6 +137,16 @@ export default function Layout({ alertCount }: { alertCount: number }) {
                 <i className={`fa-solid ${theme === "dark" ? "fa-sun" : "fa-moon"}`} aria-hidden />
                 <span className="sr-only">Theme wechseln</span>
               </button>{" "}
+              <button
+                className="btn ghost icon-only"
+                aria-label="Backup herunterladen"
+                title="Backup herunterladen (alle Daten + Dokumente)"
+                onClick={downloadBackup}
+                disabled={backingUp}
+              >
+                <i className={`fa-solid ${backingUp ? "fa-spinner fa-spin" : "fa-download"}`} aria-hidden />
+                <span className="sr-only">Backup herunterladen</span>
+              </button>{" "}
               <button className="btn ghost icon-only" aria-label="Abmelden" title="Abmelden" onClick={signOut}>
                 <i className="fa-solid fa-right-from-bracket" aria-hidden />
                 <span className="sr-only">Abmelden</span>
@@ -134,7 +156,11 @@ export default function Layout({ alertCount }: { alertCount: number }) {
         </div>
       </aside>
 
-      <main className="main"><Outlet /></main>
+      <main className="main">
+        <Suspense fallback={<p className="lede">Wird geladen …</p>}>
+          <Outlet />
+        </Suspense>
+      </main>
     </div>
   );
 }

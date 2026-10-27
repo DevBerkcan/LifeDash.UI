@@ -1,23 +1,25 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./components/AuthContext";
 import Layout from "./components/Layout";
-import Authorities from "./pages/Authorities";
-import Contracts from "./pages/Contracts";
-import Dashboard from "./pages/Dashboard";
-import Deliveries from "./pages/Deliveries";
-import Documents from "./pages/Documents";
-import Family from "./pages/Family";
-import Finance from "./pages/Finance";
 import Login from "./pages/Login";
-import Mail from "./pages/Mail";
-import Tasks from "./pages/Tasks";
-import Termine from "./pages/Termine";
-import Travel from "./pages/Travel";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import Savings from "./pages/Savings";
-import TermsOfService from "./pages/TermsOfService";
-import WishList from "./pages/WishList";
+
+// Pages load on first visit so the initial bundle (and the login screen) stays small.
+const Authorities = lazy(() => import("./pages/Authorities"));
+const Contracts = lazy(() => import("./pages/Contracts"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Deliveries = lazy(() => import("./pages/Deliveries"));
+const Documents = lazy(() => import("./pages/Documents"));
+const Family = lazy(() => import("./pages/Family"));
+const Finance = lazy(() => import("./pages/Finance"));
+const Mail = lazy(() => import("./pages/Mail"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Termine = lazy(() => import("./pages/Termine"));
+const Travel = lazy(() => import("./pages/Travel"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Savings = lazy(() => import("./pages/Savings"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const WishList = lazy(() => import("./pages/WishList"));
 
 export default function App() {
   const { session, ready } = useAuth();
@@ -26,6 +28,7 @@ export default function App() {
   if (!ready) return <div className="auth"><p className="lede">Wird geladen …</p></div>;
 
   return (
+    <Suspense fallback={<div className="auth"><p className="lede">Wird geladen …</p></div>}>
     <Routes>
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
@@ -54,5 +57,6 @@ export default function App() {
         <Route path="*" element={<Login />} />
       )}
     </Routes>
+    </Suspense>
   );
 }
