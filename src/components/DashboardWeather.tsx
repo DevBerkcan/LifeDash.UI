@@ -63,14 +63,6 @@ const DEFAULT_CITIES: CityConfig[] = [
     longitude: 7.1508,
     timezone: "Europe/Berlin",
   },
-  {
-    id: "tesanj-ba",
-    name: "Tešanj",
-    country: "Bosnien und Herzegowina",
-    latitude: 44.6122,
-    longitude: 17.9869,
-    timezone: "Europe/Sarajevo",
-  },
 ];
 
 export function getWeatherDescription(code: number): { text: string; icon: string } {

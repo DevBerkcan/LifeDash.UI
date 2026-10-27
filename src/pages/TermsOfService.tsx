@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-const updatedAt = "27.08.2026";
+const updatedAt = "27.10.2026";
 
 export default function TermsOfService() {
   return (
@@ -59,7 +59,7 @@ export default function TermsOfService() {
         <section>
           <h2>7. Kontakt</h2>
           <p>
-            Ergänze hier Name/Firma und Kontakt-E-Mail des Betreibers.
+            Betreiber: Berk-Can Atesoglu (privat), <a href="mailto:berkcan@gentlegroup.de">berkcan@gentlegroup.de</a>.
           </p>
         </section>
 

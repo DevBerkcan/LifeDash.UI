@@ -671,7 +671,26 @@ export default function Travel() {
           <Section title="Karte und Orte">
             <div className="map-setup">
               <i className="fa-solid fa-map-location-dot" aria-hidden />
-              <div><strong>Karte für {trip.destination}</strong><span>Füge `VITE_GOOGLE_MAPS_API_KEY` in der Frontend-Umgebung hinzu, damit die Karte und Orte geladen werden.</span></div>
+              <div>
+                <strong>{trip.destination}</strong>
+                <span>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trip.destination)}`} target="_blank" rel="noreferrer">
+                    In Google Maps öffnen
+                  </a>
+                  {trip.startPlace && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(trip.startPlace)}&destination=${encodeURIComponent(trip.destination)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Route ab {trip.startPlace}
+                      </a>
+                    </>
+                  )}
+                </span>
+              </div>
             </div>
           </Section>
         )}
